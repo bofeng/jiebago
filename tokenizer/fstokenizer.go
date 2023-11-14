@@ -194,11 +194,11 @@ func readJsonFromFile(fn string, fStruct interface{}) {
 	if dictFS == nil {
 		fileProbeStart, err := GetDictFile(fn)
 		if err != nil {
-			log.Panic(err)
+			log.Panicln(err)
 		}
 		data, err = os.ReadFile(fileProbeStart)
 		if err != nil {
-			log.Panic(err)
+			log.Panicln(err)
 		}
 	} else {
 		data, err = fs.ReadFile(dictFS, fn)

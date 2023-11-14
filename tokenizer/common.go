@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -102,16 +101,14 @@ func GetDictFile(file string) (string, error) {
 	// check exe file directory
 	path, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
-		log.Println(err)
-		return "", errFileNotFound
+		return "", err
 	}
 
 	dictPath = path + dictFile
 	if !fileExist(dictPath) {
 		path, err = os.Getwd()
 		if err != nil {
-			log.Println(err)
-			return "", errFileNotFound
+			return "", err
 		}
 	}
 

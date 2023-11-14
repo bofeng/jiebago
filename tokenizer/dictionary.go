@@ -16,7 +16,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 )
 
 var dictionary = &Dictionary{
@@ -128,7 +127,6 @@ func (d *Dictionary) load(fileDict string) error {
 
 func (d *Dictionary) loadFromReader(f io.Reader) error {
 	itemCount := 0
-	timeStart := time.Now()
 	reader := bufio.NewReader(f)
 	for {
 		line, err := reader.ReadString('\n')
@@ -169,12 +167,6 @@ func (d *Dictionary) loadFromReader(f io.Reader) error {
 			"unable to load the dictionary, dictionary is empty",
 		)
 	}
-
-	log.Printf(
-		"%v words are loaded, took %v\n",
-		itemCount,
-		time.Since(timeStart),
-	)
 	return nil
 }
 
@@ -183,11 +175,11 @@ func InitDictionary() {
 	if dictFS == nil {
 		dictStdFile, err := GetDictFile(DictStdFile)
 		if err != nil {
-			log.Panic(err)
+			log.Panicln(err)
 		}
 		err = dictionary.load(dictStdFile)
 		if err != nil {
-			log.Panic(err)
+			log.Panicln(err)
 		}
 
 		// load the user-defined dictionary

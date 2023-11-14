@@ -7,7 +7,7 @@ package tokenizer
 import (
 	"bufio"
 	"bytes"
-	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"log"
@@ -17,7 +17,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 )
 
 const (
@@ -63,11 +62,8 @@ func (d *StopWords) load(fileStopWords string) error {
 
 	f, err := os.Open(fileStopWords)
 	if err != nil {
-		log.Println(err)
-		return errors.New(
-			"unable to load the stop words library:" + filepath.Base(
-				fileStopWords,
-			),
+		return fmt.Errorf(
+			"unable to load stop-word lib. error: %s", err.Error(),
 		)
 	}
 	defer f.Close()
@@ -77,7 +73,6 @@ func (d *StopWords) load(fileStopWords string) error {
 
 func (d *StopWords) loadFromReader(f io.Reader) error {
 	itemCount := 0
-	timeStart := time.Now()
 	reader := bufio.NewReader(f)
 	for {
 		line, err := reader.ReadString('\n')
@@ -106,9 +101,6 @@ func (d *StopWords) loadFromReader(f io.Reader) error {
 			break
 		}
 	}
-
-	log.Printf("%v stop words are loaded, and take %v\n",
-		itemCount, time.Since(timeStart))
 	return nil
 }
 
@@ -171,7 +163,6 @@ func (d *StopWords) add(s string) (exist bool, err error) {
 	line += s + "\n"
 	_, err = f.Write([]byte(line))
 	if err != nil {
-		log.Println(err)
 		return
 	}
 
@@ -187,15 +178,16 @@ type IDFLoader struct {
 func (d *IDFLoader) load(idfFile string) error {
 	f, err := os.Open(idfFile)
 	if err != nil {
-		log.Println(err)
-		return errors.New("unable to load the IDF library")
+		return fmt.Errorf(
+			"unable to load the IDF library. error: %s",
+			err.Error(),
+		)
 	}
 	defer f.Close()
 	return d.loadFromReader(f)
 }
 
 func (d *IDFLoader) loadFromReader(f io.Reader) error {
-	timeStart := time.Now()
 	itemCount := 0
 	freqSlice := make([]float64, 0, DefaultIDFSize)
 	reader := bufio.NewReader(f)
@@ -216,7 +208,6 @@ func (d *IDFLoader) loadFromReader(f io.Reader) error {
 		itemCount++
 		freq, err := strconv.ParseFloat(elem[1], 64)
 		if err != nil {
-			log.Println(err)
 			freq = float64(0)
 		}
 
@@ -230,9 +221,6 @@ func (d *IDFLoader) loadFromReader(f io.Reader) error {
 
 	sort.Float64s(freqSlice)
 	d.idfMedian = freqSlice[itemCount/2]
-
-	log.Printf("%v idfs are loaded, and take %v\n",
-		itemCount, time.Since(timeStart))
 	return nil
 }
 
@@ -317,12 +305,12 @@ func InitTFIDF() {
 	if dictFS == nil {
 		idfFile, err := GetDictFile(IDFStdFile)
 		if err != nil {
-			log.Panic(err)
+			log.Panicln(err)
 		}
 
 		err = tfIDF.idfLoader.load(idfFile)
 		if err != nil {
-			log.Panic(err)
+			log.Panicln(err)
 		}
 
 		// load the standard stop words library
