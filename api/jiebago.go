@@ -6,15 +6,14 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/bofeng/jiebago"
+	"github.com/bofeng/jiebago/tokenizer"
 	"github.com/gin-gonic/gin"
-	"github.com/wangshizebin/jiebago"
-	"github.com/wangshizebin/jiebago/tokenizer"
 )
 
 const (
@@ -33,11 +32,17 @@ var (
 )
 
 func main() {
-	httpAddr := flag.String("http_addr", ":8118",
-		"http_addr specifies the listening ip and port, for example: -http_addr 1.2.3.4:8888")
+	httpAddr := flag.String(
+		"http_addr",
+		":8118",
+		"http_addr specifies the listening ip and port, for example: -http_addr 1.2.3.4:8888",
+	)
 
-	dictPath := flag.String("dict_path", "",
-		"dict_path specifies the path of dictionary, for example: -dict_path /data/dictionary")
+	dictPath := flag.String(
+		"dict_path",
+		"",
+		"dict_path specifies the path of dictionary, for example: -dict_path /data/dictionary",
+	)
 
 	flag.Parse()
 
@@ -93,7 +98,7 @@ func cutWordsHandler(c *gin.Context) {
 			}{
 				Response: Response{
 					ErrCode: ErrorJsonData,
-					ErrMsg:  fmt.Sprintf(`invalid json data, the proper data format is {"s":"xx","mode":"xx"}`),
+					ErrMsg:  `invalid json data, the proper data format is {"s":"xx","mode":"xx"}`,
 				},
 				Words: []string{},
 			})
@@ -108,7 +113,7 @@ func cutWordsHandler(c *gin.Context) {
 		}{
 			Response: Response{
 				ErrCode: ErrorRequestMethod,
-				ErrMsg:  fmt.Sprintf(`iinvalid request method, only GET and POST methods are supported`),
+				ErrMsg:  `invalid request method, only GET and POST methods are supported`,
 			},
 			Words: []string{},
 		})
@@ -173,7 +178,7 @@ func extractKeywordsHandler(c *gin.Context) {
 			}{
 				Response: Response{
 					ErrCode: ErrorJsonData,
-					ErrMsg:  fmt.Sprintf(`invalid json data, the proper data format is {"s":"xx","count":xx,"mode":"xx"}`),
+					ErrMsg:  `invalid json data, the proper data format is {"s":"xx","count":xx,"mode":"xx"}`,
 				},
 				Tags: []string{},
 			})
@@ -189,7 +194,7 @@ func extractKeywordsHandler(c *gin.Context) {
 		}{
 			Response: Response{
 				ErrCode: ErrorRequestMethod,
-				ErrMsg:  fmt.Sprintf(`iinvalid request method, only GET and POST methods are supported`),
+				ErrMsg:  `invalid request method, only GET and POST methods are supported`,
 			},
 			Tags: []string{},
 		})
@@ -249,7 +254,7 @@ func addDictWordHandler(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusOK, Response{
 				ErrCode: ErrorJsonData,
-				ErrMsg:  fmt.Sprintf(`invalid json data, the proper data format is {"s":"xx","weight":xx,"prop":"xx"}`),
+				ErrMsg:  `invalid json data, the proper data format is {"s":"xx","weight":xx,"prop":"xx"}`,
 			})
 			return
 		}
@@ -308,7 +313,7 @@ func addStopWordHandler(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusOK, Response{
 				ErrCode: ErrorJsonData,
-				ErrMsg:  fmt.Sprintf(`invalid json data, the proper data format is {"s":"xx"}`),
+				ErrMsg:  `invalid json data, the proper data format is {"s":"xx"}`,
 			})
 			return
 		}

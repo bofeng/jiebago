@@ -5,9 +5,10 @@
 package jiebago
 
 import (
+	"io/fs"
 	"strings"
 
-	"github.com/wangshizebin/jiebago/tokenizer"
+	"github.com/bofeng/jiebago/tokenizer"
 )
 
 type JieBaGo struct {
@@ -19,6 +20,12 @@ func NewJieBaGo(path ...string) *JieBaGo {
 		configPath = path[0]
 	}
 	tokenizer.Init(configPath)
+	jieBaGo := &JieBaGo{}
+	return jieBaGo
+}
+
+func NewJieBaGoWithFS(dictionaryFS fs.FS) *JieBaGo {
+	tokenizer.InitWithFS(dictionaryFS)
 	jieBaGo := &JieBaGo{}
 	return jieBaGo
 }
@@ -128,12 +135,19 @@ func (g *JieBaGo) ExtractKeywords(s string, count int) []string {
 	return keywords.([]string)
 }
 
-func (g *JieBaGo) ExtractKeywordsWeight(s string, count int) []tokenizer.Keyword {
+func (g *JieBaGo) ExtractKeywordsWeight(
+	s string,
+	count int,
+) []tokenizer.Keyword {
 	keywords := tokenizer.GetTFIDF().ExtractKeywords(s, count, true)
 	return []tokenizer.Keyword(keywords.(tokenizer.Keywords))
 }
 
-func (g *JieBaGo) AddDictWord(word string, freq int, prop string) (exist bool, err error) {
+func (g *JieBaGo) AddDictWord(
+	word string,
+	freq int,
+	prop string,
+) (exist bool, err error) {
 	return tokenizer.GetDictionary().AddWord(word, freq, prop)
 }
 

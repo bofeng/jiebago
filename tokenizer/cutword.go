@@ -4,6 +4,8 @@
 
 package tokenizer
 
+import "io/fs"
+
 func CutFullW(s string, words *[]string) {
 	bufEnglish := ""
 	pos := -1
@@ -60,9 +62,7 @@ func CutAccurateW(s string, words *[]string) {
 			} else {
 				if !dictionary.Exist(buf) {
 					wordsRecognized := GetFinalSeg().Cut(buf)
-					for _, w := range wordsRecognized {
-						*words = append(*words, w)
-					}
+					*words = append(*words, wordsRecognized...)
 				} else {
 					for _, v := range buf {
 						*words = append(*words, string(v))
@@ -81,9 +81,7 @@ func CutAccurateW(s string, words *[]string) {
 		} else {
 			if !dictionary.Exist(buf) {
 				wordsRecognized := GetFinalSeg().Cut(buf)
-				for _, w := range wordsRecognized {
-					*words = append(*words, w)
-				}
+				*words = append(*words, wordsRecognized...)
 			} else {
 				for _, v := range buf {
 					*words = append(*words, string(v))
@@ -168,6 +166,13 @@ func CutSymbolW(s string, words *[]string) {
 
 func Init(dictPath string) {
 	SetDictPath(dictPath)
+	InitDictionary()
+	InitTFIDF()
+	InitFSToken()
+}
+
+func InitWithFS(fs fs.FS) {
+	SetDictFS(fs)
 	InitDictionary()
 	InitTFIDF()
 	InitFSToken()

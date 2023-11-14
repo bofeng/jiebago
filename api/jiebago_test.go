@@ -10,14 +10,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/wangshizebin/jiebago/tokenizer"
+	"github.com/bofeng/jiebago/tokenizer"
 )
 
 var (
@@ -214,7 +213,12 @@ func TestExtractKeywordsWeightPost(t *testing.T) {
 	t.Log(sentence)
 
 	url := "http://localhost:8118/extract_keywords"
-	data := fmt.Sprintf(`{"s":"%s", "mode":"%s","count":%d}`, sentence, "weight", 3)
+	data := fmt.Sprintf(
+		`{"s":"%s", "mode":"%s","count":%d}`,
+		sentence,
+		"weight",
+		3,
+	)
 	result, err := Post(url, data, "application/json")
 	if err != nil {
 		t.Error(err)
@@ -250,7 +254,12 @@ func TestExtractKeywordsWeightPost(t *testing.T) {
 func TestAddDictWordsGet(t *testing.T) {
 	word := "编程宝库"
 	t.Log("=== 添加字典单词: " + word)
-	url := fmt.Sprintf(`http://localhost:8118/add_dict_word?s=%s&weight=%d&prop=%s`, word, 3, "n")
+	url := fmt.Sprintf(
+		`http://localhost:8118/add_dict_word?s=%s&weight=%d&prop=%s`,
+		word,
+		3,
+		"n",
+	)
 	result, err := Get(url)
 	if err != nil {
 		t.Error(err)
@@ -386,7 +395,7 @@ func Post(url string, data string, contentType string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	result, err := ioutil.ReadAll(resp.Body)
+	result, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}

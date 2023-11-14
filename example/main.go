@@ -5,16 +5,38 @@
 package main
 
 import (
+	"embed"
 	"fmt"
+	"io/fs"
+	"log"
 	"strings"
 
-	"github.com/wangshizebin/jiebago"
+	"github.com/bofeng/jiebago"
 )
 
+//go:embed dictionary
+var embedFS embed.FS
+
 func main() {
-	jieBaGo := jiebago.NewJieBaGo()
-	// 可以指定字典库的位置
-	// jieBaGo := jiebago.NewJieBaGo("/data/mydict")
+	/*
+		// 1) use the default path
+		 jieBaGo := jiebago.NewJieBaGo()
+	*/
+	/*
+		// 2) pass dictionary path
+		jieBaGo := jiebago.NewJieBaGo("path/to/dictionary")
+	*/
+	/*
+		// 3) use fs
+		jieBaGo := jiebago.NewJieBaGoWithFS(os.DirFS("dictionary"))
+	*/
+
+	// 4) use embed fs
+	dictFS, err := fs.Sub(embedFS, "dictionary")
+	if err != nil {
+		log.Panicln(err)
+	}
+	jieBaGo := jiebago.NewJieBaGoWithFS(dictFS)
 
 	sentence := "Shell 位于用户与系统之间，用来帮助用户与操作系统进行沟通。通常都是文字模式的 Shell。"
 	fmt.Println("原始语句：", sentence)

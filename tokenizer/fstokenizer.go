@@ -6,8 +6,9 @@ package tokenizer
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io/fs"
 	"log"
+	"os"
 	"sync"
 )
 
@@ -48,12 +49,6 @@ func (s *forceSplitWords) exist(word string) bool {
 	defer s.mutex.RUnlock()
 	_, ok := s.dict[word]
 	return ok
-}
-
-func (s *forceSplitWords) addForceSplit(word string) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-	s.dict[word] = struct{}{}
 }
 
 type FinalSeg struct {
@@ -131,7 +126,15 @@ func (fs *FinalSeg) viterbi(sentence string) []string {
 			st := ""
 			pb := minFloat
 			for _, y0 := range prevStatus[y] {
-				m := v[i-1][y0] + fs.getMatrixVal("trans", y0, y) + fs.getMatrixVal("emit", y, word)
+				m := v[i-1][y0] + fs.getMatrixVal(
+					"trans",
+					y0,
+					y,
+				) + fs.getMatrixVal(
+					"emit",
+					y,
+					word,
+				)
 				if st == "" {
 					st = y0
 					pb = m
@@ -149,7 +152,8 @@ func (fs *FinalSeg) viterbi(sentence string) []string {
 	state := "E"
 	prob := v[len(rs)-1]["E"]
 	if v[len(rs)-1]["S"] > prob {
-		prob = v[len(rs)-1]["S"]
+		v[len(rs)-1]["E"] = v[len(rs)-1]["S"]
+		//prob = v[len(rs)-1]["S"]
 		state = "S"
 	}
 	return path[state]
@@ -184,16 +188,25 @@ func (fs *FinalSeg) exist(word string) bool {
 	return fs.forceSplitWords.exist(word)
 }
 
-func readJsonFromFile(fn string, fs interface{}) {
-	fileProbeStart, err := GetDictFile(fn)
-	if err != nil {
-		log.Panic(err)
+func readJsonFromFile(fn string, fStruct interface{}) {
+	var data []byte
+	var err error
+	if dictFS == nil {
+		fileProbeStart, err := GetDictFile(fn)
+		if err != nil {
+			log.Panic(err)
+		}
+		data, err = os.ReadFile(fileProbeStart)
+		if err != nil {
+			log.Panic(err)
+		}
+	} else {
+		data, err = fs.ReadFile(dictFS, fn)
+		if err != nil {
+			log.Panicln(err)
+		}
 	}
-	data, err := ioutil.ReadFile(fileProbeStart)
-	if err != nil {
-		log.Panic(err)
-	}
-	err = json.Unmarshal(data, fs)
+	err = json.Unmarshal(data, fStruct)
 	if err != nil {
 		log.Panic(err)
 	}

@@ -6,8 +6,10 @@ package tokenizer
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -47,7 +49,11 @@ func (d *Dictionary) GetTotalFreq() float64 {
 	return float64(d.tf)
 }
 
-func (d *Dictionary) AddWord(word string, freq int, prop string) (exist bool, err error) {
+func (d *Dictionary) AddWord(
+	word string,
+	freq int,
+	prop string,
+) (exist bool, err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -64,7 +70,11 @@ func (d *Dictionary) AddWord(word string, freq int, prop string) (exist bool, er
 	dictUserFile := filepath.Dir(dictStdFile)
 	dictUserFile += string(filepath.Separator) + DictUserFile
 
-	f, err := os.OpenFile(dictUserFile, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
+	f, err := os.OpenFile(
+		dictUserFile,
+		os.O_CREATE|os.O_RDWR|os.O_APPEND,
+		0666,
+	)
 	if err != nil {
 		return
 	}
@@ -80,7 +90,7 @@ func (d *Dictionary) AddWord(word string, freq int, prop string) (exist bool, er
 	line := ""
 	n := stat.Size()
 	if n > 0 {
-		buf := make([]byte, 1, 1)
+		buf := make([]byte, 1)
 		_, err = f.ReadAt(buf, n-1)
 		if err != nil {
 			return
@@ -105,18 +115,20 @@ func (d *Dictionary) load(fileDict string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	timeStart := time.Now()
-
 	f, err := os.Open(fileDict)
 	if err != nil {
 		log.Println(err)
-		return errors.New("unable to load the dictionary library:" + filepath.Base(fileDict))
+		return errors.New(
+			"unable to load the dictionary library:" + filepath.Base(fileDict),
+		)
 	}
-	defer func() {
-		_ = f.Close()
-	}()
+	defer f.Close()
+	return d.loadFromReader(f)
+}
 
+func (d *Dictionary) loadFromReader(f io.Reader) error {
 	itemCount := 0
+	timeStart := time.Now()
 	reader := bufio.NewReader(f)
 	for {
 		line, err := reader.ReadString('\n')
@@ -153,29 +165,56 @@ func (d *Dictionary) load(fileDict string) error {
 		}
 	}
 	if len(d.dict) == 0 || d.tf <= 0 {
-		return errors.New("unable to load the dictionary library:" + filepath.Base(fileDict))
+		return errors.New(
+			"unable to load the dictionary, dictionary is empty",
+		)
 	}
 
-	log.Printf("%v words are loaded in dictionary "+filepath.Base(fileDict)+", and take %v\n",
-		itemCount, time.Now().Sub(timeStart))
+	log.Printf(
+		"%v words are loaded, took %v\n",
+		itemCount,
+		time.Since(timeStart),
+	)
 	return nil
 }
 
 func InitDictionary() {
 	// load the standard dictionary
-	dictStdFile, err := GetDictFile(DictStdFile)
-	if err != nil {
-		log.Panic(err)
-	}
-	err = dictionary.load(dictStdFile)
-	if err != nil {
-		log.Panic(err)
-	}
+	if dictFS == nil {
+		dictStdFile, err := GetDictFile(DictStdFile)
+		if err != nil {
+			log.Panic(err)
+		}
+		err = dictionary.load(dictStdFile)
+		if err != nil {
+			log.Panic(err)
+		}
 
-	// load the user-defined dictionary
-	dictUserFile, err := GetDictFile(DictUserFile)
-	if err == nil {
-		dictionary.load(dictUserFile)
+		// load the user-defined dictionary
+		dictUserFile, err := GetDictFile(DictUserFile)
+		if err == nil {
+			dictionary.load(dictUserFile)
+		}
+	} else {
+		content, err := fs.ReadFile(dictFS, DictStdFile)
+		if err != nil {
+			log.Panicln(err)
+		}
+		f := bytes.NewReader(content)
+		err = dictionary.loadFromReader(f)
+		if err != nil {
+			log.Panicln(err)
+		}
+
+		content, err = fs.ReadFile(dictFS, DictUserFile)
+		if err == nil {
+			// only load user dict when it exists
+			f = bytes.NewReader(content)
+			err = dictionary.loadFromReader(f)
+			if err != nil {
+				log.Panicln(err)
+			}
+		}
 	}
 }
 

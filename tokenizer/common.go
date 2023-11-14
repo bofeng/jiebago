@@ -7,6 +7,7 @@ package tokenizer
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -31,13 +32,24 @@ const (
 )
 
 var (
-	reEnglish, _   = regexp.Compile(RegExpEnglish)   // precompiled English regular expression
-	reChinese, _   = regexp.Compile(RegExpChinese)   // precompiled Chinese regular expression
-	reText, _      = regexp.Compile(RegExpText)      // precompiled text regular expression
-	reNumber, _    = regexp.Compile(RegExpNumber)    // precompiled numeric regular expression
-	reDelimiter, _ = regexp.Compile(RegExpDelimiter) // precompiled delimiter regular expression
+	reEnglish, _ = regexp.Compile(
+		RegExpEnglish,
+	) // precompiled English regular expression
+	reChinese, _ = regexp.Compile(
+		RegExpChinese,
+	) // precompiled Chinese regular expression
+	reText, _ = regexp.Compile(
+		RegExpText,
+	) // precompiled text regular expression
+	reNumber, _ = regexp.Compile(
+		RegExpNumber,
+	) // precompiled numeric regular expression
+	reDelimiter, _ = regexp.Compile(
+		RegExpDelimiter,
+	) // precompiled delimiter regular expression
 
 	dictPath string // dictionary directory, default is current work directory
+	dictFS   fs.FS  // dictionary folder FS, if it is not nil, then read from it
 )
 
 func IsEnglishChars(s string) bool {
@@ -80,7 +92,12 @@ func GetDictFile(file string) (string, error) {
 		return dictPath, nil
 	}
 
-	dictFile := fmt.Sprintf("%cdictionary%c%s", os.PathSeparator, os.PathSeparator, file)
+	dictFile := fmt.Sprintf(
+		"%cdictionary%c%s",
+		os.PathSeparator,
+		os.PathSeparator,
+		file,
+	)
 
 	// check exe file directory
 	path, err := filepath.Abs(filepath.Dir(os.Args[0]))
@@ -148,7 +165,11 @@ func fileExist(path string) bool {
 }
 
 func getParentPath(path string) string {
-	return substrRune(path, 0, strings.LastIndex(path, string(os.PathSeparator)))
+	return substrRune(
+		path,
+		0,
+		strings.LastIndex(path, string(os.PathSeparator)),
+	)
 }
 
 func substrRune(s string, pos, length int) string {
@@ -166,4 +187,12 @@ func GetDictPath() string {
 
 func SetDictPath(path string) {
 	dictPath = path
+}
+
+func SetDictFS(fs fs.FS) {
+	dictFS = fs
+}
+
+func GetDictFS() fs.FS {
+	return dictFS
 }

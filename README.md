@@ -1,6 +1,6 @@
-[![logo](http://static.codebaoku.com/images/blogo.png)](http://www.codebaoku.com)
-
 JiebaGo 是 jieba 中文分词的 Go 语言版本。
+
+本仓库是在源仓库 https://github.com/wangshizebin/jiebago 的基础上，添加了可以通过`fs.FS`来初始化一个jiebago的实例。详细请参考下面的"四种方法可以初始化"的部分。
 
 ## 功能特点
 
@@ -12,21 +12,45 @@ JiebaGo 是 jieba 中文分词的 Go 语言版本。
 
 ## 引用方法
 
-不使用包管理工具：
 ```bash
-go get github.com/wangshizebin/jiebago
+go get github.com/bofeng/jiebago
 ```
 
-使用 go mod 管理：
-代码中直接引用 github.com/wangshizebin/jiebago 即可。
+## 使用
 
-## 特别注意
+由于分词和提取关键词使用了中文预置词库和TF-IDF统计库，所以使用 jiebago，需要先下载项目中词库`dictionary`目录，并将`dictionary`放入项目的工作目录中。
 
-由于分词和提取关键词使用了中文预置词库和TF-IDF统计库，所以使用 jiebago，需要先下载项目中词库 dictionary 目录，并将 dictionary 放入项目的工作目录中。
-我们也可以自己指定字典库的位置，不过需要在初始化 jiebago 对象的时候进行设置：
+在下载本仓库的`dictionary`目录到你自己的仓库后，有四种方法可以初始化`jiebago` instance:
 
-```golang
-jieBaGo := jiebago.NewJieBaGo("/data/mydict")
+1，使用默认文件路径，此时jiebago会自动在当前目录寻找`dictionary`目录：
+
+```go
+jieBaGo := jiebago.NewJieBaGo()
+```
+
+2，提供dictionary目录的路径：
+
+```go
+jieBaGo := jiebago.NewJieBaGo("path/to/dictionary/folder")
+```
+
+3，将`dictionary`目录封装成`fs.FS`，然后调用`NewJieBaGoWithFS`的方法初始化：
+
+```go
+jieBaGo := jiebago.NewJieBaGoWithFS(os.DirFS("dictionary"))
+```
+
+4，同3，但使用embed.FS将dictionary目录整个打包进编译后的文件。这样的好处是，当发布你的binary时，不需要再另外包含`dictionary`目录及其文件，因为已经将它们一同打包进了编译后的binary文件。
+
+```go
+//go:embed dictionary
+var embedFS embed.FS
+
+dictFS, err := fs.Sub(embedFS, "dictionary")
+if err != nil {
+	log.Panicln(err)
+}
+jieBaGo := jiebago.NewJieBaGoWithFS(dictFS)
 ```
 
 ## 功能示例
@@ -38,7 +62,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wangshizebin/jiebago"
+	"github.com/bofeng/jiebago"
 )
 
 func main() {
@@ -120,7 +144,7 @@ NoHMM模式分词： Shell/位于/用户/与/系统/之间/，/用来/帮助/用
 向字典加入停止词：the
 ```
 
-更详细的例子参照 example/main.go, jiebago_test.go, api/iebago_test.go 中的代码。
+更详细的例子参照 example/main.go, api/iebago_test.go 中的代码。
 
 ## 单元测试
 go 包
@@ -135,8 +159,3 @@ Web API
 cd api
 go test 
 ```
-
-## Contact
-
-+ Email: `wangzebin@vip.163.com`
-+ weixin: `bkra50`

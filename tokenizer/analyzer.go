@@ -6,8 +6,10 @@ package tokenizer
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -43,10 +45,7 @@ func (k Keywords) Len() int {
 }
 
 func (k Keywords) Less(i, j int) bool {
-	if k[i].Weight > k[j].Weight {
-		return true
-	}
-	return false
+	return k[i].Weight > k[j].Weight
 }
 
 func (k Keywords) Swap(i, j int) {
@@ -62,18 +61,23 @@ func (d *StopWords) load(fileStopWords string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	timeStart := time.Now()
-
 	f, err := os.Open(fileStopWords)
 	if err != nil {
 		log.Println(err)
-		return errors.New("unable to load the stop words library:" + filepath.Base(fileStopWords))
+		return errors.New(
+			"unable to load the stop words library:" + filepath.Base(
+				fileStopWords,
+			),
+		)
 	}
-	defer func() {
-		_ = f.Close()
-	}()
+	defer f.Close()
 
+	return d.loadFromReader(f)
+}
+
+func (d *StopWords) loadFromReader(f io.Reader) error {
 	itemCount := 0
+	timeStart := time.Now()
 	reader := bufio.NewReader(f)
 	for {
 		line, err := reader.ReadString('\n')
@@ -104,7 +108,7 @@ func (d *StopWords) load(fileStopWords string) error {
 	}
 
 	log.Printf("%v stop words are loaded, and take %v\n",
-		itemCount, time.Now().Sub(timeStart))
+		itemCount, time.Since(timeStart))
 	return nil
 }
 
@@ -135,7 +139,11 @@ func (d *StopWords) add(s string) (exist bool, err error) {
 
 	stopWordsUserFile := filepath.Dir(stopWordsStdFile)
 	stopWordsUserFile += string(filepath.Separator) + StopWordsUserFile
-	f, err := os.OpenFile(stopWordsUserFile, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0666)
+	f, err := os.OpenFile(
+		stopWordsUserFile,
+		os.O_CREATE|os.O_RDWR|os.O_APPEND,
+		0666,
+	)
 	if err != nil {
 		return
 	}
@@ -151,7 +159,7 @@ func (d *StopWords) add(s string) (exist bool, err error) {
 	line := ""
 	n := stat.Size()
 	if n > 0 {
-		buf := make([]byte, 1, 1)
+		buf := make([]byte, 1)
 		_, err = f.ReadAt(buf, n-1)
 		if err != nil {
 			return
@@ -177,17 +185,17 @@ type IDFLoader struct {
 }
 
 func (d *IDFLoader) load(idfFile string) error {
-	timeStart := time.Now()
-
 	f, err := os.Open(idfFile)
 	if err != nil {
 		log.Println(err)
 		return errors.New("unable to load the IDF library")
 	}
-	defer func() {
-		_ = f.Close()
-	}()
+	defer f.Close()
+	return d.loadFromReader(f)
+}
 
+func (d *IDFLoader) loadFromReader(f io.Reader) error {
+	timeStart := time.Now()
 	itemCount := 0
 	freqSlice := make([]float64, 0, DefaultIDFSize)
 	reader := bufio.NewReader(f)
@@ -224,7 +232,7 @@ func (d *IDFLoader) load(idfFile string) error {
 	d.idfMedian = freqSlice[itemCount/2]
 
 	log.Printf("%v idfs are loaded, and take %v\n",
-		itemCount, time.Now().Sub(timeStart))
+		itemCount, time.Since(timeStart))
 	return nil
 }
 
@@ -233,7 +241,11 @@ type TFIDF struct {
 	stopWords *StopWords
 }
 
-func (t *TFIDF) ExtractKeywords(s string, count int, withWeight bool) interface{} {
+func (t *TFIDF) ExtractKeywords(
+	s string,
+	count int,
+	withWeight bool,
+) interface{} {
 	words := make([]string, 0, DefaultWordsLen)
 	segments := SplitTextSeg(s)
 	for _, segment := range segments {
@@ -302,26 +314,54 @@ func (t *TFIDF) AddStopWord(word string) (exist bool, err error) {
 
 func InitTFIDF() {
 	// load the tf-idf library
-	idfFile, err := GetDictFile(IDFStdFile)
-	if err != nil {
-		log.Panic(err)
-	}
+	if dictFS == nil {
+		idfFile, err := GetDictFile(IDFStdFile)
+		if err != nil {
+			log.Panic(err)
+		}
 
-	err = tfIDF.idfLoader.load(idfFile)
-	if err != nil {
-		log.Panic(err)
-	}
+		err = tfIDF.idfLoader.load(idfFile)
+		if err != nil {
+			log.Panic(err)
+		}
 
-	// load the standard stop words library
-	stopWordsStdFile, err := GetDictFile(StopWordsStdFile)
-	if err == nil {
-		tfIDF.stopWords.load(stopWordsStdFile)
-	}
+		// load the standard stop words library
+		stopWordsStdFile, err := GetDictFile(StopWordsStdFile)
+		if err == nil {
+			tfIDF.stopWords.load(stopWordsStdFile)
+		}
 
-	// load the user-defined stop words library
-	stopWordsUserFile, err := GetDictFile(StopWordsUserFile)
-	if err == nil {
-		tfIDF.stopWords.load(stopWordsUserFile)
+		// load the user-defined stop words library
+		stopWordsUserFile, err := GetDictFile(StopWordsUserFile)
+		if err == nil {
+			tfIDF.stopWords.load(stopWordsUserFile)
+		}
+	} else {
+		content, err := fs.ReadFile(dictFS, IDFStdFile)
+		if err != nil {
+			log.Panicln(err)
+		}
+		idfReader := bytes.NewReader(content)
+		err = tfIDF.idfLoader.loadFromReader(idfReader)
+		if err != nil {
+			log.Panicln(err)
+		}
+
+		content, err = fs.ReadFile(dictFS, StopWordsStdFile)
+		if err == nil {
+			err := tfIDF.stopWords.loadFromReader(bytes.NewReader(content))
+			if err != nil {
+				log.Panicln(err)
+			}
+		}
+
+		content, err = fs.ReadFile(dictFS, StopWordsUserFile)
+		if err == nil {
+			err := tfIDF.stopWords.loadFromReader(bytes.NewReader(content))
+			if err != nil {
+				log.Panicln(err)
+			}
+		}
 	}
 }
 

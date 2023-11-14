@@ -8,8 +8,8 @@ import (
 	"C"
 	"encoding/json"
 
-	"github.com/wangshizebin/jiebago"
-	"github.com/wangshizebin/jiebago/tokenizer"
+	"github.com/bofeng/jiebago"
+	"github.com/bofeng/jiebago/tokenizer"
 )
 
 var (
